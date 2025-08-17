@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스도쿠 마스터</title>
+<style>
+  /* 기존 스타일 그대로 */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 20px; color: #333;
+  }
+  .container { background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 30px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1); backdrop-filter: blur(10px); max-width: 600px; width: 100%; }
+  h1 { text-align: center; margin-bottom: 30px; font-size: 2.5em; background: linear-gradient(45deg, #667eea, #764ba2);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .game-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+  .difficulty-selector { display: flex; gap: 10px; align-items: center; }
+  .difficulty-btn { padding: 8px 15px; border: none; border-radius: 25px; background: #e9ecef; color: #333; cursor: pointer; font-weight: 500; transition: all 0.3s ease; }
+  .difficulty-btn.active { background: linear-gradient(45deg, #667eea, #764ba2); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102,126,234,0.4); }
+  .timer { font-size: 1.2em; font-weight: bold; color: #667eea; display: flex; align-items: center; gap: 5px; }
+  .board-container { display: flex; justify-content: center; margin: 20px 0; }
+  #sudoku-board { border-collapse: separate; border-spacing: 2px; background: #333; border-radius: 10px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  td { width: 45px; height: 45px; background: white; border: 1px solid #ddd; text-align: center; font-size: 18px; font-weight: bold; position: relative; border-radius: 4px; transition: all 0.2s ease; }
+  td:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+  input { width: 100%; height: 100%; border: none; text-align: center; font-size: 18px; font-weight: bold; background: transparent; border-radius: 4px; transition: all 0.2s ease; }
+  input:focus { outline: none; background: linear-gradient(135deg, #e3f2fd, #f3e5f5); box-shadow: inset 0 0 10px rgba(102,126,234,0.3); }
+  .fixed { background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important; color: #495057; font-weight: bold; border: 1px solid #ced4da; }
+  .error { background: linear-gradient(135deg, #fff5f5, #fed7d7) !important; animation: shake 0.5s ease-in-out; }
+  .correct { background: linear-gradient(135deg, #f0fff4, #c6f6d5) !important; animation: pulse 0.6s ease-in-out; }
+  .highlight-row, .highlight-col, .highlight-box { background: linear-gradient(135deg, #fff9c4, #fef08a) !important; }
+  td:nth-child(3), td:nth-child(6) { border-right: 3px solid #333; }
+  tr:nth-child(3) td, tr:nth-child(6) td { border-bottom: 3px solid #333; }
+  .controls { display: flex; justify-content: center; gap: 15px; margin: 25px 0; flex-wrap: wrap; }
+  button { padding: 12px 25px; border: none; border-radius: 25px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 14px; }
+  .btn-primary { background: linear-gradient(45deg, #667eea, #764ba2); color: white; }
+  .btn-secondary { background: #e9ecef; color: #333; }
+  .btn-danger { background: linear-gradient(45deg, #ff6b6b, #ee5a52); color: white; }
+  button:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+  .status { text-align: center; margin: 20px 0; min-height: 30px; font-size: 1.2em; font-weight: bold; }
+  .win-message { color: #28a745; animation: bounce 1s infinite; }
+  .stats { display: flex; justify-content: space-around; margin-top: 20px; padding: 20px; background: rgba(102,126,234,0.1); border-radius: 15px; }
+  .stat-item { text-align: center; }
+  .stat-value { font-size: 1.5em; font-weight: bold; color: #667eea; }
+  .stat-label { font-size: 0.9em; color: #666; margin-top: 5px; }
+  @keyframes shake { 0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)} }
+  @keyframes pulse { 0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)} }
+  @keyframes bounce { 0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)} }
+  @media (max-width: 480px) {
+    td { width: 35px; height: 35px; }
+    input { font-size: 16px; }
+    .container { padding: 20px; margin: 10px; }
+    h1 { font-size: 2em; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🧩 스도쿠 마스터</h1>
+  <div class="game-info">
+    <div class="difficulty-selector">
+      <span>난이도:</span>
+      <button class="difficulty-btn active" onclick="setDifficulty('easy')">쉬움</button>
+      <button class="difficulty-btn" onclick="setDifficulty('medium')">보통</button>
+      <button class="difficulty-btn" onclick="setDifficulty('hard')">어려움</button>
+    </div>
+    <div class="timer"> ⏱️ <span id="timer">00:00</span></div>
+  </div>
+  <div class="board-container"><table id="sudoku-board"></table></div>
+  <div class="status" id="status"></div>
+  <div class="controls">
+    <button class="btn-primary" onclick="newGame()">🎮 새 게임</button>
+    <button class="btn-secondary" onclick="showHint()">💡 힌트</button>
+    <button class="btn-secondary" onclick="pauseGame()">⏸️ 일시정지</button>
+    <button class="btn-danger" onclick="resetBoard()">🔄 초기화</button>
+  </div>
+  <div class="stats">
+    <div class="stat-item"><div class="stat-value" id="games-won">0</div><div class="stat-label">완료한 게임</div></div>
+    <div class="stat-item"><div class="stat-value" id="best-time">--:--</div><div class="stat-label">최고 기록</div></div>
+    <div class="stat-item"><div class="stat-value" id="hints-used">0</div><div class="stat-label">사용한 힌트</div></div>
+  </div>
+</div>
+<script>
+/* verifyUniqueness 함수 제거됨 */
+let puzzle, solution, currentDifficulty = 'easy', gameStartTime, timerInterval, isPaused = false;
+let stats = { gamesWon: 0, bestTime: null, hintsUsed: 0 };
+const difficultyLevels = { easy: 35, medium: 45, hard: 55 };
+
+// (이하 기존 게임 로직 동일 - verifyUniqueness만 삭제됨)
+// ===== 공통 유틸 =====
+function deepCopy(board){ return board.map(row => row.slice()); }
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+
+function isSafeAt(board, row, col, num){
+  for(let i=0;i<9;i++){ if(board[row][i]===num || board[i][col]===num) return false; }
+  const sr = Math.floor(row/3)*3, sc = Math.floor(col/3)*3;
+  for(let r=0;r<3;r++) for(let c=0;c<3;c++){ if(board[sr+r][sc+c]===num) return false; }
+  return true;
+}
+
+function findNextCellMRV(board){
+  let best = null, bestCandidates = null;
+  for(let r=0;r<9;r++){
+    for(let c=0;c<9;c++){
+      if(board[r][c]===0){
+        const cand = [];
+        for(let n=1;n<=9;n++) if(isSafeAt(board,r,c,n)) cand.push(n);
+        if(best===null || cand.length < bestCandidates.length){
+          best = {r, c}; bestCandidates = cand;
+          if(cand.length===1) return {cell: best, candidates: cand};
+        }
+      }
+    }
+  }
+  return best ? {cell: best, candidates: bestCandidates} : null;
+}
+
+function countSolutions(board, limit=2){
+  let count = 0;
+  function dfs(b){
+    if(count >= limit) return;
+    const pick = findNextCellMRV(b);
+    if(!pick){ count++; return; }
+    const {r, c} = pick.cell;
+    const cand = shuffle(pick.candidates.slice());
+    for(const n of cand){
+      if(isSafeAt(b,r,c,n)){
+        b[r][c] = n; dfs(b); b[r][c] = 0;
+        if(count >= limit) return;
+      }
+    }
+  }
+  dfs(deepCopy(board));
+  return count;
+}
+
+function hasUniqueSolution(board){ return countSolutions(board, 2) === 1; }
+
+function generateFullBoard(){
+  const board = Array.from({length:9},()=>Array(9).fill(0));
+  function fill(r,c){
+    if(r===9) return true; if(c===9) return fill(r+1,0);
+    const nums = shuffle([1,2,3,4,5,6,7,8,9]);
+    for(const n of nums){ if(isSafeAt(board,r,c,n)){ board[r][c]=n; if(fill(r,c+1)) return true; board[r][c]=0; } }
+    return false;
+  }
+  fill(0,0); return board;
+}
+
+function generateSudoku(){
+  const full = generateFullBoard();
+  const cells = [];
+  for(let r=0;r<9;r++) for(let c=0;c<9;c++) cells.push({r,c});
+  shuffle(cells);
+  const targetRemove = difficultyLevels[currentDifficulty];
+  const work = deepCopy(full);
+  let removed = 0;
+  for(const {r,c} of cells){
+    if(removed >= targetRemove) break;
+    const backup = work[r][c];
+    work[r][c] = 0;
+    if(hasUniqueSolution(work)){
+      removed++;
+    }else{
+      work[r][c] = backup;
+    }
+  }
+  return { puzzle: work, solution: full };
+}
+
+function startTimer(){ gameStartTime = Date.now(); timerInterval = setInterval(updateTimer, 1000); }
+function updateTimer(){ if(isPaused) return; const elapsed = Math.floor((Date.now()-gameStartTime)/1000); const m=Math.floor(elapsed/60), s=elapsed%60; document.getElementById('timer').textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }
+function stopTimer(){ clearInterval(timerInterval); }
+
+function renderBoard(){
+  const table = document.getElementById('sudoku-board');
+  table.innerHTML='';
+  for(let r=0;r<9;r++){
+    const tr=document.createElement('tr');
+    for(let c=0;c<9;c++){
+      const td=document.createElement('td'); td.dataset.row=r; td.dataset.col=c;
+      if(puzzle[r][c]!==0){ td.textContent=puzzle[r][c]; td.classList.add('fixed'); }
+      else{
+        const input=document.createElement('input'); input.setAttribute('maxlength','1'); input.setAttribute('type','text');
+        input.addEventListener('input', (e)=>checkInput(input,r,c,e));
+        input.addEventListener('focus', ()=>highlightRelated(r,c));
+        input.addEventListener('blur', ()=>clearHighlights());
+        input.addEventListener('keydown', handleKeyNavigation);
+        td.appendChild(input);
+      }
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+}
+
+function handleKeyNavigation(e){
+  const input=e.target; const td=input.parentElement; const row=parseInt(td.dataset.row); const col=parseInt(td.dataset.col);
+  let nr=row, nc=col;
+  switch(e.key){
+    case 'ArrowUp': nr=Math.max(0,row-1); e.preventDefault(); break;
+    case 'ArrowDown': nr=Math.min(8,row+1); e.preventDefault(); break;
+    case 'ArrowLeft': nc=Math.max(0,col-1); e.preventDefault(); break;
+    case 'ArrowRight': nc=Math.min(8,col+1); e.preventDefault(); break;
+  }
+  if(nr!==row || nc!==col){ const next=document.querySelector(`[data-row="${nr}"][data-col="${nc}"] input`); if(next) next.focus(); }
+}
+
+function highlightRelated(row, col){
+  clearHighlights();
+  for(let i=0;i<9;i++){
+    const rowCell=document.querySelector(`[data-row="${row}"][data-col="${i}"]`); if(rowCell) rowCell.classList.add('highlight-row');
+    const colCell=document.querySelector(`[data-row="${i}"][data-col="${col}"]`); if(colCell) colCell.classList.add('highlight-col');
+  }
+  const sr=Math.floor(row/3)*3, sc=Math.floor(col/3)*3;
+  for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+    const blockCell=document.querySelector(`[data-row="${sr+r}"][data-col="${sc+c}"]`);
+    if(blockCell) blockCell.classList.add('highlight-box');
+  }
+}
+function clearHighlights(){ document.querySelectorAll('.highlight-row, .highlight-col, .highlight-box').forEach(cell=>cell.classList.remove('highlight-row','highlight-col','highlight-box')); }
+
+function checkInput(input,row,col,e){
+  let val=input.value; val=val.replace(/[^1-9]/g,''); input.value=val; input.classList.remove('error','correct'); if(val==='') return;
+  const num=parseInt(val);
+  if (isValidMove(row,col,num)) { input.classList.add('correct'); setTimeout(()=>input.classList.remove('correct'),600); checkWin(); }
+  else { input.classList.add('error'); setTimeout(()=>input.classList.remove('error'),1000); }
+}
+
+function isValidMove(row,col,num){
+  for(let x=0;x<9;x++){ if(x!==col && getCellValue(row,x)===num) return false; }
+  for(let y=0;y<9;y++){ if(y!==row && getCellValue(y,col)===num) return false; }
+  const sr=row-row%3, sc=col-col%3;
+  for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+    const rr=sr+r, cc=sc+c; if((rr!==row || cc!==col) && getCellValue(rr,cc)===num) return false;
+  }
+  return true;
+}
+
+function getCellValue(row,col){
+  const cell=document.getElementById('sudoku-board').rows[row].cells[col];
+  if(cell.classList.contains('fixed')) return parseInt(cell.textContent);
+  const input=cell.querySelector('input'); const val=input?input.value:''; return val?parseInt(val):null;
+}
+
+function checkWin(){
+  for(let r=0;r<9;r++) for(let c=0;c<9;c++){ if(getCellValue(r,c)!==solution[r][c]) return; }
+  stopTimer();
+  const elapsed=Math.floor((Date.now()-gameStartTime)/1000); const m=Math.floor(elapsed/60), s=elapsed%60; const timeStr=`${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  stats.gamesWon++; if(!stats.bestTime || elapsed < parseBestTime()) stats.bestTime=timeStr; updateStats();
+  document.getElementById('status').innerHTML = `<div class="win-message">🎉 완료! 시간: ${timeStr} ⏱️ (유일해답 퍼즐)</div>`;
+}
+
+function parseBestTime(){ if(!stats.bestTime || stats.bestTime==='--:--') return Infinity; const [min,sec]=stats.bestTime.split(':').map(Number); return min*60+sec; }
+
+function setDifficulty(level){ currentDifficulty=level; document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('active')); event.target.classList.add('active'); newGame(); }
+
+function newGame(){
+  stopTimer();
+  const generated = generateSudoku();
+  puzzle = generated.puzzle; solution = generated.solution;
+  stats.hintsUsed=0; renderBoard(); document.getElementById('status').innerHTML = '<span style="color:#28a745"></span>';
+  isPaused=false; startTimer(); updateStats();
+}
+
+function showHint(){
+  const empty=[]; for(let r=0;r<9;r++) for(let c=0;c<9;c++){ if(puzzle[r][c]===0 && getCellValue(r,c)===null) empty.push({r,c}); }
+  if(empty.length===0) return; const pick=empty[Math.floor(Math.random()*empty.length)];
+  const input=document.querySelector(`[data-row="${pick.r}"][data-col="${pick.c}"] input`);
+  if(input){ input.value=solution[pick.r][pick.c]; input.classList.add('correct'); stats.hintsUsed++; updateStats(); setTimeout(()=>input.classList.remove('correct'),1000); checkWin(); }
+}
+
+function pauseGame(){
+  isPaused=!isPaused; const btn=event.target;
+  if(isPaused){ btn.textContent='▶️ 계속'; document.getElementById('sudoku-board').style.filter='blur(5px)'; document.getElementById('status').innerHTML='<div style="color:#ffa500;">⏸️ 게임이 일시정지되었습니다</div>'; }
+  else{ btn.textContent='⏸️ 일시정지'; document.getElementById('sudoku-board').style.filter='none'; document.getElementById('status').textContent=''; }
+}
+
+function resetBoard(){
+  if(confirm('정말 게임을 초기화하시겠습니까?')){
+    document.querySelectorAll('input').forEach(input=>{ input.value=''; input.classList.remove('error','correct'); });
+    stats.hintsUsed=0; updateStats(); document.getElementById('status').textContent=''; gameStartTime=Date.now();
+  }
+}
+
+function updateStats(){ document.getElementById('games-won').textContent=stats.gamesWon; document.getElementById('best-time').textContent=stats.bestTime||'--:--'; document.getElementById('hints-used').textContent=stats.hintsUsed; }
+
+newGame();
+</script>
+</body>
+</html>
