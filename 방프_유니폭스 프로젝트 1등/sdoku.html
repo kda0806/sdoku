@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>스도쿠 마스터</title>
 <style>
-  /* 기존 스타일 그대로 */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -84,16 +83,11 @@
   </div>
 </div>
 <script>
-/* verifyUniqueness 함수 제거됨 */
 let puzzle, solution, currentDifficulty = 'easy', gameStartTime, timerInterval, isPaused = false;
 let stats = { gamesWon: 0, bestTime: null, hintsUsed: 0 };
 const difficultyLevels = { easy: 35, medium: 45, hard: 55 };
-
-// (이하 기존 게임 로직 동일 - verifyUniqueness만 삭제됨)
-// ===== 공통 유틸 =====
 function deepCopy(board){ return board.map(row => row.slice()); }
 function shuffle(arr){ for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
-
 function isSafeAt(board, row, col, num){
   for(let i=0;i<9;i++){ if(board[row][i]===num || board[i][col]===num) return false; }
   const sr = Math.floor(row/3)*3, sc = Math.floor(col/3)*3;
